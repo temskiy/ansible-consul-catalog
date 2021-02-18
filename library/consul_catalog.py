@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 ANSIBLE_METADATA = {
     'metadata_version': '0.1',
@@ -45,7 +45,7 @@ options:
   address:
     description:
       - The catalog node's address
-    required: true
+    required: false
   scheme:
     description:
       - The scheme to connect to Consul
@@ -63,9 +63,22 @@ options:
     default: present
     required: false
     choices: ['present','absent']
-  service:
+  service_name:
     description:
-      - JSON service to register, see https://www.consul.io/api/catalog.html#service.
+      - Service name
+    required: false
+  service_id:
+    description:
+      - Service ID
+    required: false
+  service_port:
+    description:
+      - Service port
+    defaut: 0
+    required: false
+  service_tags:
+    description:
+      - Service tags
     required: false
 
 requirements:
@@ -80,7 +93,13 @@ EXAMPLES = '''
         address: "db1.example.net"
         state: present
         token: "notcheese"
-        service: "{'Port': 5432, 'ID': 'db1_postgres', 'Service': 'postgres', 'Tags': ['v1', 'prod']}"
+        service_name: "postgres"
+        service_id: "db1_postgres"
+        service_port: 5432
+        service_tags:
+          - master
+          - v1
+
 '''
 
 from ansible.module_utils.basic import *
@@ -93,12 +112,15 @@ def main():
         "consul_port": {"required": False, "type":"int", "default":8500},
         "token": {"required": False, "type":"str", "default":""},
         "node": {"required": True, "type":"str"},
-        "dc": {"required": False, "type":"str", "default":"dc1"},
-        "address": {"required": True, "type":"str"},
+        "dc": {"required": False, "type":"str", "default":""},
+        "address": {"required": False, "type":"str"},
         "scheme": {"required": False, "type":"str", "choices":['http','https'],"default":"http"},
         "verify": {"required": False, "type":"bool", "default":False},
         "state": {"required": False, "type":"str", "choices":['present','absent'],"default":"present"},
-        "service": {"required": False, "type": "raw", "default":""}
+        "service_name": {"required": False, "type":"str", "default":""},
+        "service_id": {"required": False, "type":"str", "default":""},
+        "service_port": {"required": False, "type":"int", "default":0},
+        "service_tags": {"required": False, "type":"list", "default":""}
     }
 
     module = AnsibleModule(argument_spec=fields,supports_check_mode=False)
@@ -128,8 +150,7 @@ def check_node_exists(params,cc):
     return exists
     
 def register_node(params,cc):
-    svc = ast.literal_eval(params['service'])
-    r = cc.register(params['node'],params['address'],dc=params['dc'],service=svc)
+    r = cc.register(params['node'],params['address'],dc=params['dc'],service={ "Service": params['service_name'], "ID": params['service_id'], "Tags": params['service_tags'], "Port": params['service_port'] })
     has_changed = True
     result = r
     return has_changed,result
@@ -137,7 +158,7 @@ def register_node(params,cc):
 def deregister_node(params,cc):
     node_exists = check_node_exists(params,cc)
     if node_exists:
-        r = cc.deregister(params['node'])
+        r = cc.deregister(params['node'],service_id=params['service_id'])
         has_changed = True
         result = r
     else:

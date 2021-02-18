@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 ANSIBLE_METADATA = {
-    'metadata_version': '0.1',
+    'metadata_version': '0.2',
     'status': ['preview']
 }
 
@@ -15,6 +15,7 @@ version_added: "2.7"
 
 author:
     - @lobstermania
+    - @temskiy
 
 description:
  - Allows the addition and deletion of nodes from the Consul catalog. See https://www.consul.io/api/catalog.html.
